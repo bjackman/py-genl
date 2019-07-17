@@ -17,6 +17,10 @@ except ImportError:
 from .netlink import pad, NetlinkError, parse_generic_attributes
 
 
+class NetlinkBuildError(Exception):
+    pass
+
+
 class NlAttrSet(Mapping):
     """
     Concrete instance of a set of netlink attributes
@@ -174,7 +178,8 @@ class NlAttrSchema(object):
         :meth:`from_spec`).
         """
         if bool(_attr_values) == bool(kwargs):
-            raise ValueError("Provide exactly one of _attr_values or kwargs")
+            raise NetlinkBuildError(
+                "Provide exactly one of _attr_values or kwargs")
 
         if kwargs:
             attr_values = {self.name_mapping[k]: v for k, v in kwargs.items()}
@@ -186,11 +191,11 @@ class NlAttrSchema(object):
         # First check for unknown or attribute names or missing values
         unknown_attrs = set(attr_values).difference(self.subattr_schemata)
         if unknown_attrs:
-            raise ValueError("Unknown attributes: {}".format(unknown_attrs))
+            raise NetlinkError("Unknown attributes: {}".format(unknown_attrs))
         missing_attrs = set(self.required_attrs).difference(attr_values)
         if missing_attrs:
-            raise ValueError("Missing required attributes: {}"
-                             .format(missing_attrs))
+            raise NetlinkError("Missing required attributes: {}"
+                               .format(missing_attrs))
 
         # Now iterate over the known attributes and build the message up
         for name, val in attr_values.items():
@@ -406,9 +411,10 @@ class NlAttrSchemaArray(NlAttrSchemaCollection):
         self.subelem_schema = subelem_schema
         self.ids = ids
         if not hasattr(subelem_schema, "size"):
-            raise ValueError("Can only build arrays of fixed-size elems "
-                             "(schema object of type {} has no `size` attr)"
-                             .format(type(subelem_schema).__name__))
+            raise NetlinkBuildError(
+                "Can only build arrays of fixed-size elems "
+                "(schema object of type {} has no `size` attr)"
+                .format(type(subelem_schema).__name__))
 
     def build(self, attr_values):
         payload = b""
