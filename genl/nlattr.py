@@ -182,6 +182,11 @@ class NlAttrSchema(object):
                 "Provide exactly one of _attr_values or kwargs")
 
         if kwargs:
+            unknown_kwargs = set(kwargs).difference(self.name_mapping)
+            if unknown_kwargs:
+                raise ValueError("Unsupported kwargs {} (Supported: {})"
+                                 .format(unknown_kwargs,
+                                         self.name_mapping.keys()))
             attr_values = {self.name_mapping[k]: v for k, v in kwargs.items()}
         else:
             attr_values = _attr_values
@@ -227,8 +232,12 @@ class NlAttrSchema(object):
                 if attr.atype == self.ids[attr_name]:
                     break
             else:
-                warnings.warn("Don't know about attribute with ID {}, ignoring"
-                              .format(attr.atype))
+                msg = "Ignoring unknown attribute {}." .format(attr.atype)
+                candidates = [n for n, i in self.ids.items()
+                              if i == attr.atype]
+                if candidates:
+                    msg += " Could be {}".format(", ".join(candidates))
+                warnings.warn(msg)
                 continue
 
             try:
